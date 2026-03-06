@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import { getTodaySchedule, WEEKLY_SCHEDULE } from '$lib/utils/schedule';
@@ -8,21 +9,24 @@
 		convertPaces,
 		type PaceUnit
 	} from '$lib/utils/pace';
+	import { profileStore } from '$lib/stores/profile';
 
-	// Demo data (will be replaced with user profile data)
-	const demoProfile = {
-		prDistanceKm: 5,
-		prTimeSeconds: 20 * 60 + 30, // 20:30 5K
-		pacePreference: 'km' as PaceUnit
-	};
+	onMount(() => {
+		profileStore.load();
+	});
 
 	const today = getTodaySchedule();
-	const basePaces = calculateWorkoutPaces(demoProfile.prDistanceKm, demoProfile.prTimeSeconds);
-	const paces = convertPaces(basePaces, demoProfile.pacePreference);
+
+	$: profile = $profileStore;
+	$: basePaces = profile
+		? calculateWorkoutPaces(profile.prDistanceKm, profile.prTimeSeconds)
+		: null;
+	$: paces = basePaces ? convertPaces(basePaces, profile?.pacePreference ?? 'km') : null;
+	$: paceUnit = profile?.pacePreference ?? 'km';
 
 	function getWorkoutPace(type: string) {
+		if (!paces) return '-';
 		if (type === 'quality') {
-			// Default to 5x7' pace for quality days
 			return formatPace(paces.sweetSpot7min);
 		}
 		if (type === 'long' || type === 'easy') {
@@ -38,48 +42,69 @@
 
 <div class="container mx-auto max-w-2xl px-4 py-8">
 	<header class="mb-8 text-center">
-		<h1 class="text-3xl font-bold tracking-tight">Sweet Spot</h1>
+		<h1 class="text-3xl font-bold tracking-tight">
+			{#if profile}
+				Hey, {profile.name}
+			{:else}
+				Sweet Spot
+			{/if}
+		</h1>
 		<p class="text-muted-foreground">Norwegian Singles Approach</p>
 	</header>
 
-	<!-- Today's Workout Card -->
-	<Card.Root class="mb-6">
-		<Card.Header>
-			<Card.Title class="flex items-center justify-between">
-				<span>Today's Workout</span>
-				<span class="text-sm font-normal text-muted-foreground">{today.day}</span>
-			</Card.Title>
-			<Card.Description>{today.description}</Card.Description>
-		</Card.Header>
-		<Card.Content>
-			{#if today.type === 'rest'}
-				<p class="text-lg">Rest and recover!</p>
-			{:else}
-				<div class="space-y-4">
-					{#if today.workout}
-						<div>
-							<p class="text-sm text-muted-foreground">Workout</p>
-							<p class="text-lg font-medium">{today.workout}</p>
-						</div>
-					{/if}
-					<div>
-						<p class="text-sm text-muted-foreground">Target Pace</p>
-						<p class="text-2xl font-bold">
-							{getWorkoutPace(today.type)}
-							<span class="text-base font-normal text-muted-foreground">
-								/{demoProfile.pacePreference}
-							</span>
-						</p>
-					</div>
-				</div>
-			{/if}
-		</Card.Content>
-		{#if today.type !== 'rest'}
+	{#if !profile}
+		<!-- Profile Setup CTA -->
+		<Card.Root class="mb-6">
+			<Card.Header>
+				<Card.Title>Welcome to Sweet Spot</Card.Title>
+				<Card.Description>
+					Set up your profile to get personalized training paces based on your recent race
+				</Card.Description>
+			</Card.Header>
 			<Card.Footer>
-				<Button class="w-full">Start Workout</Button>
+				<Button href="/profile" class="w-full">Set Up Profile</Button>
 			</Card.Footer>
-		{/if}
-	</Card.Root>
+		</Card.Root>
+	{:else}
+		<!-- Today's Workout Card -->
+		<Card.Root class="mb-6">
+			<Card.Header>
+				<Card.Title class="flex items-center justify-between">
+					<span>Today's Workout</span>
+					<span class="text-sm font-normal text-muted-foreground">{today.day}</span>
+				</Card.Title>
+				<Card.Description>{today.description}</Card.Description>
+			</Card.Header>
+			<Card.Content>
+				{#if today.type === 'rest'}
+					<p class="text-lg">Rest and recover!</p>
+				{:else}
+					<div class="space-y-4">
+						{#if today.workout}
+							<div>
+								<p class="text-sm text-muted-foreground">Workout</p>
+								<p class="text-lg font-medium">{today.workout}</p>
+							</div>
+						{/if}
+						<div>
+							<p class="text-sm text-muted-foreground">Target Pace</p>
+							<p class="text-2xl font-bold">
+								{getWorkoutPace(today.type)}
+								<span class="text-base font-normal text-muted-foreground">
+									/{paceUnit}
+								</span>
+							</p>
+						</div>
+					</div>
+				{/if}
+			</Card.Content>
+			{#if today.type !== 'rest'}
+				<Card.Footer>
+					<Button class="w-full">Start Workout</Button>
+				</Card.Footer>
+			{/if}
+		</Card.Root>
+	{/if}
 
 	<!-- Week Overview -->
 	<Card.Root>
@@ -120,8 +145,10 @@
 		</Card.Content>
 	</Card.Root>
 
-	<!-- Demo Notice -->
-	<p class="mt-6 text-center text-sm text-muted-foreground">
-		Demo mode: Using 20:30 5K PR. Sign in to set your personal records.
-	</p>
+	<!-- Profile Link -->
+	{#if profile}
+		<p class="mt-6 text-center text-sm text-muted-foreground">
+			<a href="/profile" class="underline hover:text-foreground">Edit Profile</a>
+		</p>
+	{/if}
 </div>
