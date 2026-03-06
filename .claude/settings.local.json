@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:lactrace.com)",
+      "WebFetch(domain:norwegiansingles.run)",
+      "Bash(npx sv create:*)",
+      "Bash(npx sv@latest create . --template minimal --types ts --force)",
+      "Bash(npm install)",
+      "Bash(npx shadcn-svelte@latest init --defaults)",
+      "Bash(npx shadcn-svelte@latest init:*)",
+      "Bash(npm ls:*)",
+      "Bash(npm install:*)",
+      "Bash(npx shadcn-svelte@latest add:*)"
+    ]
+  }
+}
