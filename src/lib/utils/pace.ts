@@ -7,6 +7,15 @@
 
 export type PaceUnit = 'km' | 'mi';
 
+export type HillType = 'flat' | 'rolling' | 'hilly' | 'steep';
+
+export const HILL_ADJUSTMENTS: Record<HillType, number> = {
+	flat: 0,
+	rolling: 5,
+	hilly: 12,
+	steep: 20
+};
+
 export interface PaceTime {
 	minutes: number;
 	seconds: number;
@@ -153,6 +162,21 @@ export interface ConditionAdjustments {
 	wind: number; // km/h headwind
 	surface: 'road' | 'trail' | 'track';
 	feeling: number; // 1-10 scale
+	hill: HillType; // Terrain elevation profile
+}
+
+/**
+ * Get default conditions (neutral/optimal)
+ */
+export function getDefaultConditions(): ConditionAdjustments {
+	return {
+		temperature: 15,
+		humidity: 50,
+		wind: 0,
+		surface: 'road',
+		feeling: 5,
+		hill: 'flat'
+	};
 }
 
 export function calculatePaceAdjustment(conditions: ConditionAdjustments): number {
@@ -179,6 +203,9 @@ export function calculatePaceAdjustment(conditions: ConditionAdjustments): numbe
 	if (conditions.surface === 'trail') {
 		adjustmentSeconds += 15; // +15s for trail
 	}
+
+	// Hill adjustment
+	adjustmentSeconds += HILL_ADJUSTMENTS[conditions.hill];
 
 	// Feeling adjustment (5 is neutral)
 	const feelingDiff = 5 - conditions.feeling;

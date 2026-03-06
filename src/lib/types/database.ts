@@ -44,6 +44,7 @@ export interface Database {
 					humidity: number | null;
 					wind: number | null;
 					surface: string | null;
+					hill: string | null;
 					pre_run_feeling: number | null;
 					notes: string | null;
 					created_at: string;
@@ -59,6 +60,7 @@ export interface Database {
 					humidity?: number | null;
 					wind?: number | null;
 					surface?: string | null;
+					hill?: string | null;
 					pre_run_feeling?: number | null;
 					notes?: string | null;
 					created_at?: string;
@@ -74,6 +76,7 @@ export interface Database {
 					humidity?: number | null;
 					wind?: number | null;
 					surface?: string | null;
+					hill?: string | null;
 					pre_run_feeling?: number | null;
 					notes?: string | null;
 					created_at?: string;

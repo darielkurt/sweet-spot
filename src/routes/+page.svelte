@@ -2,14 +2,21 @@
 	import { onMount } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
+	import * as Collapsible from '$lib/components/ui/collapsible';
 	import { getTodaySchedule, WEEKLY_SCHEDULE } from '$lib/utils/schedule';
 	import {
 		calculateWorkoutPaces,
 		formatPace,
 		convertPaces,
-		type PaceUnit
+		adjustPace,
+		calculatePaceAdjustment,
+		getDefaultConditions,
+		type PaceUnit,
+		type ConditionAdjustments
 	} from '$lib/utils/pace';
 	import { profileStore } from '$lib/stores/profile';
+	import { conditionsStore } from '$lib/stores/conditions';
+	import PaceAdjustmentPanel from '$lib/components/PaceAdjustmentPanel.svelte';
 
 	onMount(() => {
 		profileStore.load();
@@ -17,22 +24,46 @@
 
 	const today = getTodaySchedule();
 
-	$: profile = $profileStore;
-	$: basePaces = profile
-		? calculateWorkoutPaces(profile.prDistanceKm, profile.prTimeSeconds)
-		: null;
-	$: paces = basePaces ? convertPaces(basePaces, profile?.pacePreference ?? 'km') : null;
-	$: paceUnit = profile?.pacePreference ?? 'km';
+	let adjustmentPanelOpen = $state(false);
+	let showAdjusted = $state(false);
+
+	let profile = $derived($profileStore);
+	let conditions = $derived($conditionsStore);
+	let basePaces = $derived(
+		profile ? calculateWorkoutPaces(profile.prDistanceKm, profile.prTimeSeconds) : null
+	);
+	let paces = $derived(basePaces ? convertPaces(basePaces, profile?.pacePreference ?? 'km') : null);
+	let paceUnit = $derived(profile?.pacePreference ?? 'km');
+	let totalAdjustment = $derived(calculatePaceAdjustment(conditions));
 
 	function getWorkoutPace(type: string) {
 		if (!paces) return '-';
+		let pace;
 		if (type === 'quality') {
-			return formatPace(paces.sweetSpot7min);
+			pace = paces.sweetSpot7min;
+			if (showAdjusted) {
+				pace = adjustPace(pace, totalAdjustment);
+			}
+			return formatPace(pace);
 		}
 		if (type === 'long' || type === 'easy') {
-			return `${formatPace(paces.easyPaceLow)} - ${formatPace(paces.easyPaceHigh)}`;
+			let lowPace = paces.easyPaceLow;
+			let highPace = paces.easyPaceHigh;
+			if (showAdjusted) {
+				lowPace = adjustPace(lowPace, totalAdjustment);
+				highPace = adjustPace(highPace, totalAdjustment);
+			}
+			return `${formatPace(lowPace)} - ${formatPace(highPace)}`;
 		}
 		return '-';
+	}
+
+	function handleConditionsChange(newConditions: ConditionAdjustments) {
+		conditionsStore.set(newConditions);
+	}
+
+	function handleToggleChange(value: boolean) {
+		showAdjusted = value;
 	}
 </script>
 
@@ -104,6 +135,44 @@
 				</Card.Footer>
 			{/if}
 		</Card.Root>
+
+		<!-- Pace Adjustments Panel -->
+		<Collapsible.Root bind:open={adjustmentPanelOpen}>
+			<Card.Root class="mb-6">
+				<Collapsible.Trigger class="w-full text-left">
+					<Card.Header class="cursor-pointer">
+						<Card.Title class="flex items-center justify-between">
+							<span>Pace Adjustments</span>
+							<span class="text-sm font-normal {showAdjusted && totalAdjustment !== 0 ? 'text-orange-600' : 'text-muted-foreground'}">
+								{#if showAdjusted && totalAdjustment !== 0}
+									{totalAdjustment > 0 ? '+' : ''}{totalAdjustment}s/{paceUnit}
+								{:else}
+									Baseline
+								{/if}
+							</span>
+						</Card.Title>
+						<Card.Description>
+							{adjustmentPanelOpen ? 'Adjust for conditions' : 'Tap to adjust for conditions'}
+						</Card.Description>
+					</Card.Header>
+				</Collapsible.Trigger>
+				<Collapsible.Content>
+					<Card.Content>
+						{#if paces}
+							<PaceAdjustmentPanel
+								basePace={paces.sweetSpot7min}
+								{paceUnit}
+								{conditions}
+								{showAdjusted}
+								onConditionsChange={handleConditionsChange}
+								onToggleChange={handleToggleChange}
+								compact={true}
+							/>
+						{/if}
+					</Card.Content>
+				</Collapsible.Content>
+			</Card.Root>
+		</Collapsible.Root>
 	{/if}
 
 	<!-- Week Overview -->
@@ -145,9 +214,11 @@
 		</Card.Content>
 	</Card.Root>
 
-	<!-- Profile Link -->
+	<!-- Navigation Links -->
 	{#if profile}
 		<p class="mt-6 text-center text-sm text-muted-foreground">
+			<a href="/calculator" class="underline hover:text-foreground">Pace Calculator</a>
+			<span class="mx-2">|</span>
 			<a href="/profile" class="underline hover:text-foreground">Edit Profile</a>
 		</p>
 	{/if}
